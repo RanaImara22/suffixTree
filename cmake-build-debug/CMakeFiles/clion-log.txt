@@ -1,0 +1,4 @@
+"C:\Users\User\AppData\Local\JetBrains\CLion 2021.3.3\bin\cmake\win\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=C:/Users/User/AppData/Local/JetBrains/CLion 2021.3.3/bin/ninja/win/ninja.exe" -G Ninja C:\Users\User\CLionProjects\suffixTree
+-- Configuring done
+-- Generating done
+-- Build files have been written to: C:/Users/User/CLionProjects/suffixTree/cmake-build-debug
