@@ -1,194 +1,216 @@
-#include <cstdlib>
-#include <cstring>
-#include <cstdio>
 #include <iostream>
+#include <utility>
 using namespace std;
-
-class Node;
-class SuffixTreeNode;
-class Node {
+struct Child;
+class Children;
+class TreeNode;
+class Child {
 public:
-    SuffixTreeNode *value;
-    Node *Next = nullptr;
-    Node(SuffixTreeNode *value, Node *Next) : value(value), Next(Next) {}
-    ~Node() {
-        delete value;
-        delete Next;
+    TreeNode* node;
+    Child* next;
+    Child() {
+        next = nullptr;
     }
+    //    ~Child() {
+    //        delete node;
+    //        delete next;
+    //    }
+    Child(TreeNode* node, Child* next) : node(node), next(next) {}
 };
-
 class Children {
-private:
-    void deleteList(Node *node) {
+public:
+    Child* head;
+    int size = 0;
+    void deleteList(Child* node) {
         if (node != nullptr) {
-            deleteList(node->Next);
+            deleteList(node->next);
             delete node;
         }
     }
 
-public:
+    //    ~Children() {
+    //        deleteList(head);
+    //    }
+    Child* addChild(TreeNode* node) {
+        Child* newChild = new Child(node, nullptr);
+        if (this->head == nullptr) {
+            this->head = newChild;
+            size++;
+            return this->head;
+        }
+        else {
+            newChild->next = this->head;
+            this->head = newChild;
+            size++;
+            return newChild;
+        }
 
-    Node *head = nullptr;
-    int size;
-    ~Children() {
-        deleteList(head);
     }
-    void add(SuffixTreeNode *node){
-        Node *node1= new Node(node, nullptr);
-        if(head == nullptr){
-            head = node1;
-        }
-        else{
-            Node *current= head ;
-            while(current != nullptr){
-                current=current->Next;
-            }
-            current=node1;
-        }
-    }
-//    Node *node;
+
 };
-class SuffixTreeNode {
+class TreeNode {
 public:
-    Children *children;
-    int str_index;  // to store the starting index of the substring
-    int suffix_index;
-
-    SuffixTreeNode() : children(nullptr), str_index(-1), suffix_index(-1) {}
-    ~SuffixTreeNode() {
-        delete children;
-    }
-
-    void print(int depth = 0) {
-        for (int i = 0; i < depth; ++i) {
-            std::cout << "  ";
-        }
-
-        std::cout << "Edge: [" << str_index << ", " << suffix_index << "]\n";
-
-        if (children != nullptr) {
-            Node *childNode = children->head;
-            while (childNode != nullptr) {
-                childNode->value->print(depth + 1);
-                childNode = childNode->Next;
-            }
-        }
+    Children children;
+    int strIndex;
+    int suffixIndex;
+    TreeNode() {
+        strIndex = -1;
+        suffixIndex = -1;
+        children.head = nullptr;
     }
 };
-
 class SuffixTree {
-private:
-    char *input_txt;
-    SuffixTreeNode *root;
-//public:
-//    // Constructor
-//    SuffixTree(char *txt) {
-//        input_txt = strdup(txt);
-//        root = new SuffixTreeNode();
-//    }
+public:
+    TreeNode* root;
+    const char* word;
+    int wordLength;
 
-    void insertSuffix(int suffix_index, int current_index, SuffixTreeNode *currentNode) {
-        // Check if there are no children for the current node
-        if (currentNode->children == nullptr) {
-            currentNode->children = new Children();
-            currentNode->children->add(new SuffixTreeNode());
+    SuffixTree() {
+        root = new TreeNode();
+        int len = 0;
+        while (word[len] != '\0') {
+            len++;
         }
+        wordLength = len;
+    }
+    SuffixTree(const char* word) : word(word) {
+        root = new TreeNode();
+        int len = 0;
+        while (word[len] != '\0') {
+            len++;
+        }
+        wordLength = len;
 
-        // Traverse through the children to find the correct insertion point
-        Node *childNode = currentNode->children->head;
-        while (childNode != nullptr) {
-            int edgeStart = childNode->value->str_index;
-            int edgeEnd = (childNode->value->suffix_index == -1) ? current_index : childNode->value->suffix_index;
+    }
+    void constructTree() {
+        for (int i = 0; i < wordLength; ++i) {
+            addNode(i, wordLength, root);
+        }
+    }
+    void addNode(int index, int current_index, TreeNode* currentNode) {
+        // check if there are no children for current node
 
-            // Case 1: Suffix is a prefix of the edge
-            if (input_txt[suffix_index] == input_txt[edgeStart]) {
-                int commonLength = 0;
-                while (input_txt[suffix_index + commonLength] == input_txt[edgeStart + commonLength]) {
-                    commonLength++;
-                }
+        // current node has children
 
-                // Case 1.1: Suffix is completely covered by the current edge
-                if (commonLength == edgeEnd - edgeStart) {
-                    insertSuffix(suffix_index + commonLength, current_index, childNode->value);
+
+        current_index-=index;
+        while(current_index>0){
+            if (currentNode->children.size == 0) {
+                Child* child = currentNode->children.addChild(new TreeNode());
+                child->node->strIndex = index;
+                child->node->suffixIndex =wordLength - current_index;
+                return;
+            }
+            Child* childNode = currentNode->children.head;
+            while (childNode != nullptr) {
+                int edgeStart = childNode->node->strIndex;
+                int edgeEnd = (childNode->node->suffixIndex == -1) ? current_index : childNode->node->suffixIndex;
+                if (word[index] == word[edgeStart]) {
+                    int commonLen = 0;
+                    while (word[index + commonLen] == word[edgeStart + commonLen]) {
+                        commonLen++;
+                        current_index--;
+                    }
+                    // Case 1.1: Suffix is completely covered by the current edge
+                    if (commonLen == edgeEnd - edgeStart) {
+                        addNode(index + commonLen, current_index, childNode->node);
+                        return;
+                    }
+                    // Case 1.2: Split the edge
+                    //splitted suffix
+                    TreeNode* splittedSuffix = new TreeNode();
+                    splittedSuffix->strIndex = edgeStart + commonLen;
+                    splittedSuffix->suffixIndex = edgeEnd;
+                    //old suffix node
+                    childNode->node->strIndex = edgeStart;
+                    childNode->node->suffixIndex = -1;
+                    //new suffix node
+                    TreeNode* newNode = new TreeNode();
+                    newNode->strIndex = index + commonLen;
+                    newNode->suffixIndex = index;
+                    childNode->node->children.addChild(splittedSuffix);
+                    childNode->node->children.addChild(newNode);
                     return;
                 }
-
-                // Case 1.2: Split the edge
-//                SuffixTreeNode *newNode = new SuffixTreeNode();
-//                newNode->str_index = edgeStart + commonLength;
-//                newNode->suffix_index = edgeEnd;
-//                childNode->value->str_index = edgeStart;
-//                childNode->value->suffix_index = edgeStart + commonLength;
-//                newNode->children = new Children();
-//                newNode->children->add(new SuffixTreeNode());
-//                newNode->children->add(new SuffixTreeNode());
-//                newNode->children->head->value->str_index = suffix_index + commonLength;
-//                newNode->children->head->value->suffix_index = current_index;
-//                childNode->value->children = newNode->children;
-//                return;
+                childNode = childNode->next;
             }
-
-            // Case 2: Suffix shares only part of the edge
-//            if (input_txt[suffix_index] != input_txt[edgeStart] &&
-//                input_txt[suffix_index] == input_txt[edgeStart + 1]) {
-            // Split the edge
-//                SuffixTreeNode *newNode = new SuffixTreeNode();
-//                newNode->str_index = edgeStart + 1;
-//                newNode->suffix_index = edgeEnd;
-//                childNode->value->str_index = edgeStart;
-//                childNode->value->suffix_index = edgeStart + 1;
-//                newNode->children = childNode->value->children;
-//                childNode->value->children = new Children();
-//                childNode->value->children->add(newNode);
-//                childNode->value->children->add(new SuffixTreeNode());
-//                childNode->value->children->head->value->str_index = suffix_index + 1;
-//                childNode->value->children->head->value->suffix_index = current_index;
-//                return;
-            //           }
-
-            // Move to the next child
-            childNode = childNode->Next;
+            // Case 1: Suffix is a prefix of the edge
+            Child* child = currentNode->children.addChild(new TreeNode());
+            child->node->strIndex = index;
+            child->node->suffixIndex = index;
+            break;
         }
-
         // Case 3: Suffix forms a new leaf node
-        currentNode->children->add(new SuffixTreeNode());
-        currentNode->children->head->value->str_index = suffix_index;
-        currentNode->children->head->value->suffix_index = current_index;
     }
+    void traverseAndPrint(TreeNode* node, const char* word, int level = 0) {
+        if (!node) {
+            return;
+        }
 
-public:
-    // Constructor
-    SuffixTree(char *txt) {
-        input_txt = strdup(txt);
-        root = new SuffixTreeNode();
-        buildSuffixTree();
-    }
-    ~SuffixTree() {
-        delete root;
-        free(input_txt);
-    }
-    // Public function to build the suffix tree
-    void buildSuffixTree() {
-        int n = strlen(input_txt);
-        for (int i = 0; i < n; ++i) {
-            insertSuffix(i, n - 1, root);
+        // Print the current node
+        for (int i = 0; i < level; ++i) {
+            cout << "  ";
+        }
+
+        cout << "[" << node->strIndex << ", " << node->suffixIndex << "]";
+
+        if (node->children.size != 0) {
+            cout << " -> children: ";
+            Child* childNode = node->children.head;
+            while (childNode != nullptr) {
+                cout << "[" << childNode->node->strIndex << ", " << childNode->node->suffixIndex << "] ";
+                childNode = childNode->next;
+            }
+        }
+
+        cout << endl;
+
+        // Recursively traverse children
+        if (node->children.size != 0) {
+            Child* childNode = node->children.head;
+            while (childNode != nullptr) {
+                traverseAndPrint(childNode->node, word, level + 1);
+                childNode = childNode->next;
+            }
         }
     }
-    void print() {
-        root->print();
+
+    TreeNode* getRoot() const {
+        return root;
+    }
+
+    void setRoot(TreeNode* root) {
+        SuffixTree::root = root;
+    }
+
+    void setWord(char* word) {
+        SuffixTree::word = word;
+    }
+
+    int getWordLength() const {
+        return wordLength;
+    }
+
+    void setWordLength(int wordLength) {
+        SuffixTree::wordLength = wordLength;
+    }
+
+    // Function to initiate traversal and printing
+    void printSuffixTree(SuffixTree& suffixTree) {
+        cout << "Suffix Tree:" << endl;
+        traverseAndPrint(suffixTree.getRoot(), suffixTree.word);
     }
 
 };
 int main() {
-    char text[] = "Banana$";  // Replace with your actual input text
+    const char* text = "banana$";  // Replace with your actual input text
 
     // Create an instance of the SuffixTree class
     SuffixTree suffixTree(text);
 
     // Build the suffix tree
-    suffixTree.buildSuffixTree();
-
+    suffixTree.constructTree();
+    suffixTree.printSuffixTree(suffixTree);
     // Your additional operations on the suffix tree, if needed
 //    suffixTree.print();
-    return 0;
 }
