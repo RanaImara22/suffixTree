@@ -91,47 +91,60 @@ public:
         root = new TreeNode();
         wordLength = strlen(word);
     }
+    int getMinChildIndex(Children children){
+        int min = children.head->node->strIndex;
+        Child* temp = children.head->next;
+        while(temp != nullptr){
+            if(temp->node->strIndex < min){
+                min = temp->node->strIndex;
+            }
+            temp = temp->next;
+        }
+        return min;
+    }
     void constructTree() {
         for (int i = 0; i < wordLength; ++i) {
-            addNode(i, wordLength, root);
+            addNode(i, wordLength,i, root);
         }
     }
-    void addNode(int index, int current_index, TreeNode* currentNode) {
+    void addNode(int index, int current_index,int real, TreeNode* currentNode) {
         current_index-=index;
 
         while(current_index>0){
             if (currentNode->children.size == 0) {
                 Child* child = currentNode->children.addChild(new TreeNode());
                 child->node->strIndex = index;
-                child->node->suffixIndex =wordLength - current_index;
+                child->node->suffixIndex = index;
                 return;
             }
-            Child *currentChild = reinterpret_cast<Child *>(currentNode);
             Child* childNode = currentNode->children.head;
             while (childNode != nullptr) {
-                currentChild = childNode;
                 int edgeStart = childNode->node->strIndex;
-                int edgeEnd = (childNode->node->suffixIndex == -1) ? childNode->node->children.head->node->strIndex-childNode->node->children.head->node->suffixIndex : childNode->node->suffixIndex;
+                int min;
+                if(childNode->node->suffixIndex == -1){
+                    min = getMinChildIndex(childNode->node->children);
+                }
+                int edgeEnd = (childNode->node->suffixIndex == -1) ? (min-childNode->node->strIndex-1)+childNode->node->strIndex : wordLength-1;
                 if (word[index] == word[edgeStart]) {
                     int commonLen = 0;
-                    while (word[index + commonLen] == word[edgeStart + commonLen]) {
+                    while (commonLen < edgeEnd-edgeStart+1 && word[index + commonLen] == word[edgeStart + commonLen]) {
                         commonLen++;
                         current_index--;
                     }
                     // Case 1.1: Suffix is completely covered by the current edge
-                    if (commonLen == edgeEnd - edgeStart) {
-                        addNode(index + commonLen, current_index, childNode->node);
+                    if (commonLen == edgeEnd-edgeStart+1) {
+                        addNode(index + commonLen, wordLength,real, childNode->node);
                         return;
                     }
                     //new suffix node
                     TreeNode* newNode = new TreeNode();
-                    newNode->strIndex = index + commonLen;
-                    newNode->suffixIndex = index;
+                    newNode->strIndex = index+commonLen;
+                    newNode->suffixIndex = real;
                     if(childNode->node->suffixIndex != -1){
                         //splitted suffix
                         TreeNode* splittedSuffix = new TreeNode();
                         splittedSuffix->strIndex = edgeStart + commonLen;
-                        splittedSuffix->suffixIndex = edgeEnd;
+                        splittedSuffix->suffixIndex = childNode->node->suffixIndex;
                         //old suffix node
                         childNode->node->strIndex = edgeStart;
                         childNode->node->suffixIndex = -1;
@@ -140,6 +153,7 @@ public:
 
                         return;
                     }
+                    /////
                     else{
                         //new Me
                         TreeNode *newMe = new TreeNode();
@@ -164,7 +178,7 @@ public:
             // Case 3: Suffix forms a new leaf node
             Child* child = currentNode->children.addChild(new TreeNode());
             child->node->strIndex = index;
-            child->node->suffixIndex = index;
+            child->node->suffixIndex = real;
             break;
         }
 
@@ -179,13 +193,13 @@ public:
             cout << "  ";
         }
 
-        cout << "[" << node->strIndex << ", " << node->suffixIndex << "]";
+        cout << "(" << node->strIndex << ", " << node->suffixIndex << ")";
 
         if (node->children.size != 0) {
             cout << " -> children: ";
             Child* childNode = node->children.head;
             while (childNode != nullptr) {
-                cout << "[" << childNode->node->strIndex << ", " << childNode->node->suffixIndex << "] ";
+                cout << "(" << childNode->node->strIndex << ", " << childNode->node->suffixIndex << ") ";
                 childNode = childNode->next;
             }
         }
@@ -230,7 +244,7 @@ public:
 
 };
 int main() {
-    const char* text = "bananabanaba$";  // Replace with your actual input text
+    const char* text = "panamabananas$";  // Replace with your actual input text
 
     // Create an instance of the SuffixTree class
     SuffixTree suffixTree(text);
